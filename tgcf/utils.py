@@ -32,8 +32,12 @@ def platform_info():
 async def send_message(recipient: EntityLike, tm: "TgcfMessage") -> Message:
     """Forward or send a copy, depending on config."""
     client: TelegramClient = tm.message.client
-    if CONFIG.show_forwarded_from:
-        return await client.forward_messages(recipient, tm.message)
+    try:
+        if CONFIG.show_forwarded_from:
+            return await client.forward_messages(recipient, tm.message)
+    except ChatForwardsRestrictedError:
+        pass  # Ignore the ChatForwardsRestrictedError exception
+
     if tm.new_file:
         message = await client.send_file(
             recipient, tm.new_file, caption=tm.text, reply_to=tm.reply_to
