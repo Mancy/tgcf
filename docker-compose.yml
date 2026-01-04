@@ -1,0 +1,18 @@
+services:
+  tgcf:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tgcf-web
+    ports:
+      - "8502:8080"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    networks:
+      - tgcf-network
+
+networks:
+  tgcf-network:
+    driver: bridge
