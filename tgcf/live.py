@@ -1,11 +1,13 @@
 """The module responsible for operating tgcf in live mode."""
 
+import asyncio
 import logging
 import os
 import sys
 from typing import Union
 
 from telethon import TelegramClient, events, functions, types
+from telethon.errors.rpcerrorlist import FloodWaitError
 from telethon.sessions import StringSession
 from telethon.tl.custom.message import Message
 
@@ -50,8 +52,17 @@ async def new_message_handler(event: Union[Message, events.NewMessage]) -> None:
     for d in dest:
         if event.is_reply and r_event_uid in st.stored:
             tm.reply_to = st.stored.get(r_event_uid).get(d)
-        fwded_msg = await send_message(d, tm)
-        st.stored[event_uid].update({d: fwded_msg})
+        try:
+            fwded_msg = await send_message(d, tm)
+            st.stored[event_uid].update({d: fwded_msg})
+        except FloodWaitError as fwe:
+            logging.info(f"Sleeping for {fwe} on forward_messages")
+            await asyncio.sleep(delay=fwe.seconds)
+            # Retry after flood wait
+            fwded_msg = await send_message(d, tm)
+            st.stored[event_uid].update({d: fwded_msg})
+        except Exception as err:
+            logging.exception(f"Failed to forward message to {d}: {err}")
     tm.clear()
 
 
@@ -87,7 +98,15 @@ async def edited_message_handler(event) -> None:
     dest = config.from_to.get(chat_id)
 
     for d in dest:
-        await send_message(d, tm)
+        try:
+            await send_message(d, tm)
+        except FloodWaitError as fwe:
+            logging.info(f"Sleeping for {fwe} on forward_messages")
+            await asyncio.sleep(delay=fwe.seconds)
+            # Retry after flood wait
+            await send_message(d, tm)
+        except Exception as err:
+            logging.exception(f"Failed to forward edited message to {d}: {err}")
     tm.clear()
 
 
