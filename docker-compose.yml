@@ -5,8 +5,9 @@ services:
       dockerfile: Dockerfile
     container_name: tgcf-web
     ports:
-      - "8502:8080"
+      - "8501:8080"
     volumes:
+      - ./tgcf.config.json:/app/tgcf.config.json
       - ./data:/app/data
       - ./.env:/app/.env:ro
     restart: unless-stopped
